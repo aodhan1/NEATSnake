@@ -1,28 +1,31 @@
 package com.aodnap.SnakeGame;
 
-import com.aodnap.SnakeGame.SnakeQueue.SnakeQueue;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.ListIterator;
 
 public class Game extends JPanel implements KeyListener, ActionListener {
 
     private static final int BLOCK_WIDTH = 25;
     private static final int FRAME_DELAY = 100;
     private char[][] grid = new char[29][25];
+
     private Direction snakesDirection;
 
-    private ImageIcon snakeHead;
-    private ImageIcon snakeBody;
-    private ImageIcon berry;
+    private ImageIcon imgSnakeHead;
+    private ImageIcon imgSnakeBody;
+    private ImageIcon imgBerry;
 
-    private SnakeQueue snake;
+    private LinkedList<SnakeBodyPart> snake;
+    private GameObject berry;
     private int score;
-    private int snakeLength;
 
     private Timer timer;
 
@@ -32,11 +35,11 @@ public class Game extends JPanel implements KeyListener, ActionListener {
         setFocusTraversalKeysEnabled(false);
         timer = new Timer(FRAME_DELAY, this);
 
-        snakeHead = new ImageIcon("assets/sprites/head.png");
-        snakeBody = new ImageIcon("assets/sprites/body.png");
-        berry = new ImageIcon("assets/sprites/berry.png");
+        imgSnakeHead = new ImageIcon("assets/sprites/head.png");
+        imgSnakeBody = new ImageIcon("assets/sprites/body.png");
+        imgBerry = new ImageIcon("assets/sprites/berry.png");
 
-        initGrid();
+        initGame();
         timer.start();
     }
 
@@ -52,14 +55,14 @@ public class Game extends JPanel implements KeyListener, ActionListener {
         //draw grid
         for (int i = 0; i < 29; i++) {
             for (int j =0; j < 25; j++) {
-                int posX = i * BLOCK_WIDTH;
-                int posY = j * BLOCK_WIDTH;
+                int posX = 22+ i * BLOCK_WIDTH;
+                int posY = 22+ j * BLOCK_WIDTH;
                 switch(grid[i][j]){
-                    case 'h': snakeHead.paintIcon(this, g, posX, posY);
+                    case 'h': imgSnakeHead.paintIcon(this, g, posX, posY);
                         break;
-                    case 'b': snakeBody.paintIcon(this, g, posX, posY);
+                    case 'b': imgSnakeBody.paintIcon(this, g, posX, posY);
                         break;
-                    case 'B': berry.paintIcon(this, g, posX, posY);
+                    case 'B': imgBerry.paintIcon(this, g, posX, posY);
                         break;
                     default:
                         break;
@@ -69,26 +72,39 @@ public class Game extends JPanel implements KeyListener, ActionListener {
         g.dispose();
     }
 
-    private void initGrid () {
-        //empty Grid
-        for (int i = 0; i < 29; i++) {
-            for (int j = 0; i < 25; i++) {
-                grid[i][j] = 'e';
-            }
-        }
-        //snake
-        snake = new SnakeQueue();
-        grid[16][12] = 'h';
-        grid[15][12] = 'b';
-        grid[14][12] = 'b';
+    public Direction getSnakesDirection() {
+        return snakesDirection;
+    }
+
+    public void setSnakesDirection(Direction snakesDirection) {
+        this.snakesDirection = snakesDirection;
+    }
+
+    private void initGame () {
+        //plot the grid and snake
+        emptyGrid();
+        //initial snake
+        snake = new LinkedList<>();
+        snake.add(new SnakeBodyPart(16, 12, 'h', this, null));
+        snake.add(new SnakeBodyPart(15, 12, 'b', this, snake.getLast()));
+        snake.add(new SnakeBodyPart(14, 12, 'b', this, snake.getLast()));
+
         //set snake starter state
         snakesDirection = Direction.EAST;
         score = 0;
-        snakeLength = 3;
+
+        plotSnake();
+
+        //place initial berry in empty space
+        placeBerry();
+
+        //plot berry on map
+        plotBerry();
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        timer.start();
 
     }
 
@@ -116,5 +132,54 @@ public class Game extends JPanel implements KeyListener, ActionListener {
     @Override
     public void keyReleased(KeyEvent e) {
 
+    }
+
+    private void plotSnake() {
+        ListIterator<SnakeBodyPart> it = snake.listIterator(snake.size());
+        while (it.hasPrevious()) {
+            SnakeBodyPart sbp = (SnakeBodyPart) it.previous();
+            grid[sbp.getxPos()][sbp.getyPos()] = sbp.getType();
+        }
+    }
+
+    private void emptyGrid() {
+        for (int i = 0; i < 29; i++) {
+            for (int j = 0; j < 25; j++) {
+                grid[i][j] = 'e';
+            }
+        }
+    }
+
+    private void plotGrid() {
+        emptyGrid();
+
+        //plot snake
+        if (snake != null) {
+            plotSnake();
+        }
+
+        //plot berry
+        if(berry != null){
+            plotBerry();
+        }
+    }
+
+    private void placeBerry() {
+        ArrayList<GameObject> availableSquare = new ArrayList<>();
+        for (int i = 0; i < 29; i++) {
+            for (int j = 0; j < 25; j++) {
+                if (grid[i][j] == 'e') {
+                    availableSquare.add(new GameObject(i, j, 'e', this));
+                }
+            }
+        }
+
+        Collections.shuffle(availableSquare);
+        berry = new GameObject(availableSquare.get(0).getxPos(), availableSquare.get(0).getyPos(), 'B', this);
+    }
+
+    private void plotBerry() {
+        grid[berry.getxPos()][berry.getyPos()] = 'B';
+        System.out.println("XPOS: "+berry.getxPos() + " YPOS: "+berry.getyPos());
     }
 }
